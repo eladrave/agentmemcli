@@ -14,7 +14,7 @@ A pure Python CLI tool designed to interact with the `AI Agentic Memory MCP Serv
    ```bash
    python3 -m venv venv
    source venv/bin/activate
-   pip install httpx mcp python-dotenv httpx-sse
+   pip install -r requirements.txt
    ```
 
 3. Create a `.env` file with your Cloud Run deployment details:
