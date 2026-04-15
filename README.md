@@ -24,20 +24,33 @@ A pure Python CLI tool designed to interact with the `AI Agentic Memory MCP Serv
    # Used for Admin commands:
    AGENTMEM_ADMIN_PASSWORD="<YOUR_ADMIN_PASSWORD>"
    
-   # Used for standard User commands (will be generated):
+   # Used for standard User commands:
    AGENTMEM_TOKEN="<YOUR_TOKEN>"
+
+   # (Optional) Provide your own Gemini API Key to bypass the 10-Corpus limit
+   GEMINI_API_KEY="<YOUR_GEMINI_API_KEY>"
    ```
 
 ## Usage
 
+### Providing your own Gemini API Key
+
+If the server hits its Gemini Corpus limit (10 free corpora per Google Cloud Project), you can provide your own `GEMINI_API_KEY` in the `.env` file.
+
+If you ever change your key or want to move your existing memories to a brand new remote Corpus, simply run:
+```bash
+python cli.py rebuild-corpus
+```
+*This command will create a brand new corpus on your personal key, link it to your user account, and perform a full `sync --force` to upload all your locally backed-up memories directly to the new index!*
+
 ### Admin Commands
-Admin commands require the `AGENTMEM_ADMIN_PASSWORD` variable to be set in your `.env`. Otherwise, you will receive a `not allowed` error.
+Admin commands require the `AGENTMEM_ADMIN_PASSWORD` variable to be set in your `.env`.
 
 - **Provision a new user:**
   ```bash
   python cli.py admin-provision
   ```
-  *This will generate and output a new User ID and Token. Copy the token into your `.env` as `AGENTMEM_TOKEN`.*
+  *Generates a new user ID and Token. Copy the token into your `.env`.*
 
 - **Rotate a user's token:**
   ```bash
@@ -50,7 +63,7 @@ Admin commands require the `AGENTMEM_ADMIN_PASSWORD` variable to be set in your 
   ```
 
 ### User Commands
-Standard user commands require the `AGENTMEM_TOKEN` to be set in your `.env` file. These commands utilize the MCP SSE endpoints over the wire!
+Standard user commands require `AGENTMEM_TOKEN` in your `.env` file. These execute directly over the MCP SSE pipeline.
 
 - **Add a memory:**
   ```bash
@@ -78,7 +91,7 @@ Standard user commands require the `AGENTMEM_TOKEN` to be set in your `.env` fil
   python cli.py sync --force
   ```
 
-- **Trigger the Dream Subsystem for your specific token:**
+- **Trigger the Dream Subsystem:**
   ```bash
   python cli.py dream
   ```
