@@ -4,12 +4,14 @@ import os
 import httpx
 from dotenv import load_dotenv
 
-# Optional explicit path
 load_dotenv()
 
 URL = os.environ.get("AGENTMEM_URL", "").rstrip("/")
 ADMIN_PASS = os.environ.get("AGENTMEM_ADMIN_PASSWORD")
 TOKEN = os.environ.get("AGENTMEM_TOKEN")
+
+# Increase timeouts heavily because Gemini API calls over Cloud Run can take a moment
+client_timeout = httpx.Timeout(30.0)
 
 def check_admin():
     if not ADMIN_PASS:
@@ -41,7 +43,8 @@ async def _call_mcp_tool(tool_name: str, args: dict):
 
 async def do_admin_provision():
     check_admin()
-    async with httpx.AsyncClient() as client:
+    print("Provisioning... This might take a few seconds as it connects to Gemini.")
+    async with httpx.AsyncClient(timeout=client_timeout) as client:
         res = await client.post(f"{URL}/admin/users", headers={"X-Admin-Password": ADMIN_PASS})
         if res.status_code == 200:
             data = res.json()
@@ -55,7 +58,7 @@ async def do_admin_provision():
 
 async def do_admin_rotate(user_id):
     check_admin()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=client_timeout) as client:
         res = await client.post(f"{URL}/admin/users/{user_id}/rotate", headers={"X-Admin-Password": ADMIN_PASS})
         if res.status_code == 200:
             data = res.json()
@@ -68,7 +71,7 @@ async def do_admin_rotate(user_id):
 
 async def do_admin_dream_all():
     check_admin()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=client_timeout) as client:
         res = await client.post(f"{URL}/admin/dream_all", headers={"X-Admin-Password": ADMIN_PASS})
         if res.status_code == 202:
             print("Dream sequence initiated for all users in the background.")
@@ -77,7 +80,8 @@ async def do_admin_dream_all():
 
 async def do_dream():
     check_token()
-    async with httpx.AsyncClient() as client:
+    print("Dream sequence started... This may take up to a minute.")
+    async with httpx.AsyncClient(timeout=60.0) as client:
         res = await client.post(f"{URL}/api/dream", headers={"Authorization": f"Bearer {TOKEN}"})
         if res.status_code == 200:
             data = res.json()
