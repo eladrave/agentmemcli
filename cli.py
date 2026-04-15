@@ -9,8 +9,8 @@ load_dotenv()
 URL = os.environ.get("AGENTMEM_URL", "").rstrip("/")
 ADMIN_PASS = os.environ.get("AGENTMEM_ADMIN_PASSWORD")
 TOKEN = os.environ.get("AGENTMEM_TOKEN")
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY") # Optional, to fix the corpus limit
 
-# Increase timeouts heavily because Gemini API calls over Cloud Run can take a moment
 client_timeout = httpx.Timeout(30.0)
 
 def check_admin():
@@ -23,12 +23,24 @@ def check_token():
         print("Error: AGENTMEM_TOKEN is not set in .env. Run 'python cli.py admin-provision' to get one.")
         exit(1)
 
+def get_headers(is_admin=False):
+    headers = {}
+    if is_admin:
+        headers["X-Admin-Password"] = ADMIN_PASS
+    else:
+        headers["Authorization"] = f"Bearer {TOKEN}"
+        
+    if GEMINI_KEY:
+        headers["X-Gemini-Api-Key"] = GEMINI_KEY
+        
+    return headers
+
 async def _call_mcp_tool(tool_name: str, args: dict):
     from mcp.client.sse import sse_client
     from mcp import ClientSession
 
     url = f"{URL}/mcp/sse"
-    headers = {"Authorization": f"Bearer {TOKEN}"}
+    headers = get_headers()
     try:
         async with sse_client(url, headers=headers) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as session:
@@ -43,9 +55,9 @@ async def _call_mcp_tool(tool_name: str, args: dict):
 
 async def do_admin_provision():
     check_admin()
-    print("Provisioning... This might take a few seconds as it connects to Gemini.")
+    print("Provisioning... This might take a few seconds.")
     async with httpx.AsyncClient(timeout=client_timeout) as client:
-        res = await client.post(f"{URL}/admin/users", headers={"X-Admin-Password": ADMIN_PASS})
+        res = await client.post(f"{URL}/admin/users", headers=get_headers(is_admin=True))
         if res.status_code == 200:
             data = res.json()
             print(f"User provisioned successfully!")
@@ -59,7 +71,7 @@ async def do_admin_provision():
 async def do_admin_rotate(user_id):
     check_admin()
     async with httpx.AsyncClient(timeout=client_timeout) as client:
-        res = await client.post(f"{URL}/admin/users/{user_id}/rotate", headers={"X-Admin-Password": ADMIN_PASS})
+        res = await client.post(f"{URL}/admin/users/{user_id}/rotate", headers=get_headers(is_admin=True))
         if res.status_code == 200:
             data = res.json()
             print(f"User token rotated successfully!")
@@ -72,7 +84,7 @@ async def do_admin_rotate(user_id):
 async def do_admin_dream_all():
     check_admin()
     async with httpx.AsyncClient(timeout=client_timeout) as client:
-        res = await client.post(f"{URL}/admin/dream_all", headers={"X-Admin-Password": ADMIN_PASS})
+        res = await client.post(f"{URL}/admin/dream_all", headers=get_headers(is_admin=True))
         if res.status_code == 202:
             print("Dream sequence initiated for all users in the background.")
         else:
@@ -82,10 +94,25 @@ async def do_dream():
     check_token()
     print("Dream sequence started... This may take up to a minute.")
     async with httpx.AsyncClient(timeout=60.0) as client:
-        res = await client.post(f"{URL}/api/dream", headers={"Authorization": f"Bearer {TOKEN}"})
+        res = await client.post(f"{URL}/api/dream", headers=get_headers())
         if res.status_code == 200:
             data = res.json()
             print(f"Dream completed successfully for date {data.get('target_date')}.")
+        else:
+            print(f"Error {res.status_code}: {res.text}")
+
+async def do_rebuild_corpus():
+    check_token()
+    if not GEMINI_KEY:
+        print("Error: GEMINI_API_KEY is not set in your .env file. You must set this to rebuild your corpus on a specific key.")
+        exit(1)
+        
+    print("Rebuilding corpus from local files... This will create a new remote Gemini Corpus and upload all your data.")
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        res = await client.post(f"{URL}/api/corpus/rebuild", headers=get_headers(), json={"new_api_key": GEMINI_KEY})
+        if res.status_code == 200:
+            data = res.json()
+            print(f"Corpus rebuilt successfully! Your new remote corpus ID is: {data.get('new_corpus_id')}")
         else:
             print(f"Error {res.status_code}: {res.text}")
 
@@ -130,6 +157,7 @@ def main():
 
     # User commands
     parser_dream = subparsers.add_parser("dream", help="Trigger dream sequence for your user")
+    parser_rebuild = subparsers.add_parser("rebuild-corpus", help="Link your own Gemini API Key and rebuild the corpus")
 
     # MCP Tool commands
     parser_add = subparsers.add_parser("add", help="Add a new memory")
@@ -160,6 +188,8 @@ def main():
         loop.run_until_complete(do_admin_dream_all())
     elif args.command == "dream":
         loop.run_until_complete(do_dream())
+    elif args.command == "rebuild-corpus":
+        loop.run_until_complete(do_rebuild_corpus())
     elif args.command == "add":
         loop.run_until_complete(do_add(args.content))
     elif args.command == "search":
