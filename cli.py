@@ -90,6 +90,24 @@ async def do_admin_dream_all():
         else:
             print(f"Error {res.status_code}: {res.text}")
 
+async def do_admin_get_dream_prompt():
+    check_admin()
+    async with httpx.AsyncClient(timeout=client_timeout) as client:
+        res = await client.get(f"{URL}/admin/dream_prompt", headers=get_headers(is_admin=True))
+        if res.status_code == 200:
+            print(res.json()["prompt"])
+        else:
+            print(f"Error {res.status_code}: {res.text}")
+
+async def do_admin_set_dream_prompt(prompt_text):
+    check_admin()
+    async with httpx.AsyncClient(timeout=client_timeout) as client:
+        res = await client.post(f"{URL}/admin/dream_prompt", headers=get_headers(is_admin=True), json={"prompt": prompt_text})
+        if res.status_code == 200:
+            print("Dream prompt updated successfully.")
+        else:
+            print(f"Error {res.status_code}: {res.text}")
+
 async def do_dream():
     check_token()
     print("Dream sequence started... This may take up to a minute.")
@@ -154,6 +172,9 @@ def main():
     parser_admin_rot = subparsers.add_parser("admin-rotate", help="Rotate a user's token")
     parser_admin_rot.add_argument("user_id", type=str, help="The UUID of the user")
     parser_admin_dream = subparsers.add_parser("admin-dream-all", help="Trigger dream sequence for all users")
+    parser_admin_get_prompt = subparsers.add_parser("admin-get-dream-prompt", help="Get the current global dream prompt text")
+    parser_admin_set_prompt = subparsers.add_parser("admin-set-dream-prompt", help="Update the global dream prompt text")
+    parser_admin_set_prompt.add_argument("prompt", type=str, help="The new prompt text")
 
     # User commands
     parser_dream = subparsers.add_parser("dream", help="Trigger dream sequence for your user")
@@ -186,6 +207,10 @@ def main():
         loop.run_until_complete(do_admin_rotate(args.user_id))
     elif args.command == "admin-dream-all":
         loop.run_until_complete(do_admin_dream_all())
+    elif args.command == "admin-get-dream-prompt":
+        loop.run_until_complete(do_admin_get_dream_prompt())
+    elif args.command == "admin-set-dream-prompt":
+        loop.run_until_complete(do_admin_set_dream_prompt(args.prompt))
     elif args.command == "dream":
         loop.run_until_complete(do_dream())
     elif args.command == "rebuild-corpus":
