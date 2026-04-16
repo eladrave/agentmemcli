@@ -27,13 +27,13 @@ A pure Python CLI tool designed to interact with the `AI Agentic Memory MCP Serv
    # Used for standard User commands:
    AGENTMEM_TOKEN="<YOUR_TOKEN>"
 
-   # (Optional) Provide your own Gemini API Key to bypass the 10-Corpus limit
+   # (Optional) Provide your own Gemini API Key to bypass the Server's quota limits
    AGENTMEM_CUSTOM_GEMINI_KEY="<YOUR_GEMINI_API_KEY>"
    ```
 
 ## IMPORTANT: How Multi-Tenancy & Memory Works
 
-When you run `python cli.py admin-provision`, the server creates a **brand new, totally isolated Semantic Search Corpus** inside Google Gemini for the newly generated user ID.
+When you run `python cli.py admin-provision`, the server creates a **brand new, totally isolated Semantic Search space** inside Google Gemini for the newly generated user ID.
 
 The `AGENTMEM_TOKEN` you receive represents exactly one isolated user profile.
 - Memories added under Token A **cannot** be searched by Token B.
@@ -44,13 +44,13 @@ The `AGENTMEM_TOKEN` you receive represents exactly one isolated user profile.
 
 ### Providing your own Gemini API Key
 
-If the server hits its Gemini Corpus limit (10 free corpora per Google Cloud Project), you can provide your own `AGENTMEM_CUSTOM_GEMINI_KEY` in the `.env` file.
+If the server hits its Gemini quota limits, you can provide your own `AGENTMEM_CUSTOM_GEMINI_KEY` in the `.env` file.
 
-If you ever change your key or want to move your existing memories to a brand new remote Corpus, simply run:
+If you ever change your key or want to move your existing memories to a brand new remote account, simply run:
 ```bash
 python cli.py rebuild-corpus
 ```
-*This command will create a brand new corpus on your personal key, link it to your user account, and perform a full `sync --force` to upload all your locally backed-up memories directly to the new index!*
+*This command will link the new API key, link it to your user account, and perform a full `sync --force` to upload all your locally backed-up `.md` memories directly to the new index!*
 
 ### Admin Commands
 Admin commands require the `AGENTMEM_ADMIN_PASSWORD` variable to be set in your `.env`.
@@ -69,6 +69,12 @@ Admin commands require the `AGENTMEM_ADMIN_PASSWORD` variable to be set in your 
 - **Trigger dream sequence for all users:**
   ```bash
   python cli.py admin-dream-all
+  ```
+
+- **View or update the global Dream Prompt:**
+  ```bash
+  python cli.py admin-get-dream-prompt
+  python cli.py admin-set-dream-prompt "You are an AI memory archivist..."
   ```
 
 ### User Commands
@@ -94,7 +100,7 @@ Standard user commands require `AGENTMEM_TOKEN` in your `.env` file. These execu
   python cli.py delete <memory_uuid>
   ```
 
-- **Sync local memories with Gemini Corpus:**
+- **Sync local memories with Gemini (L2 Cache):**
   ```bash
   python cli.py sync
   python cli.py sync --force
