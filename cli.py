@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import os
 import httpx
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 import logging
 
 # Set up logging
@@ -13,16 +13,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger("agentmemcli")
 
-load_dotenv()
+# Strictly load only from the local .env file, ignoring the system environment
+env_config = dotenv_values(".env")
 
-URL = os.environ.get("AGENTMEM_URL", "").rstrip("/")
-ADMIN_PASS = os.environ.get("AGENTMEM_ADMIN_PASSWORD")
-TOKEN = os.environ.get("AGENTMEM_TOKEN")
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY") # Optional, to fix the corpus limit
+URL = env_config.get("AGENTMEM_URL", "").rstrip("/")
+ADMIN_PASS = env_config.get("AGENTMEM_ADMIN_PASSWORD")
+TOKEN = env_config.get("AGENTMEM_TOKEN")
+# Namespace the custom key to avoid generic GEMINI_API_KEY leaks from bash profiles
+GEMINI_KEY = env_config.get("AGENTMEM_CUSTOM_GEMINI_KEY")
 
 logger.debug(f"Loaded URL: {URL}")
 logger.debug(f"Loaded Token: {'***' + TOKEN[-4:] if TOKEN else None}")
-logger.debug(f"Loaded Gemini Key Override: {'***' + GEMINI_KEY[-4:] if GEMINI_KEY else None}")
+logger.debug(f"Loaded Custom Gemini Key: {'***' + GEMINI_KEY[-4:] if GEMINI_KEY else 'None'}")
+
+if GEMINI_KEY:
+    logger.warning("You are using a custom AGENTMEM_CUSTOM_GEMINI_KEY.")
+    logger.warning("If this key is different from the one used to provision your account, searches will fail.")
+    logger.warning("Run 'python cli.py rebuild-corpus' to migrate your data to the new key if necessary.")
 
 client_timeout = httpx.Timeout(30.0)
 
@@ -144,7 +151,7 @@ async def do_dream():
 async def do_rebuild_corpus():
     check_token()
     if not GEMINI_KEY:
-        logger.error("GEMINI_API_KEY is not set in your .env file. You must set this to rebuild your corpus on a specific key.")
+        logger.error("AGENTMEM_CUSTOM_GEMINI_KEY is not set in your .env file. You must set this to rebuild your corpus on a specific key.")
         exit(1)
         
     logger.info("Rebuilding corpus from local files... This will create a new remote Gemini Corpus and upload all your data.")
