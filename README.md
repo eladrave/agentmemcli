@@ -28,14 +28,23 @@ A pure Python CLI tool designed to interact with the `AI Agentic Memory MCP Serv
    AGENTMEM_TOKEN="<YOUR_TOKEN>"
 
    # (Optional) Provide your own Gemini API Key to bypass the 10-Corpus limit
-   GEMINI_API_KEY="<YOUR_GEMINI_API_KEY>"
+   AGENTMEM_CUSTOM_GEMINI_KEY="<YOUR_GEMINI_API_KEY>"
    ```
+
+## IMPORTANT: How Multi-Tenancy & Memory Works
+
+When you run `python cli.py admin-provision`, the server creates a **brand new, totally isolated Semantic Search Corpus** inside Google Gemini for the newly generated user ID.
+
+The `AGENTMEM_TOKEN` you receive represents exactly one isolated user profile.
+- Memories added under Token A **cannot** be searched by Token B.
+- If you provision a new user and swap your `.env` file to use the new token, your memory bank will be completely blank and start over from scratch!
+- If you lose your token but still know your user ID, an admin can rotate it via `admin-rotate`.
 
 ## Usage
 
 ### Providing your own Gemini API Key
 
-If the server hits its Gemini Corpus limit (10 free corpora per Google Cloud Project), you can provide your own `GEMINI_API_KEY` in the `.env` file.
+If the server hits its Gemini Corpus limit (10 free corpora per Google Cloud Project), you can provide your own `AGENTMEM_CUSTOM_GEMINI_KEY` in the `.env` file.
 
 If you ever change your key or want to move your existing memories to a brand new remote Corpus, simply run:
 ```bash
